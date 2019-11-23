@@ -1,0 +1,14 @@
+gthr-default.h:229:1:int __gthread_key_delete(__gthread_key_t)	16	static
+main.cpp:89:6:void ptr_training(uint8_t*)	16	static
+main.cpp:103:5:int main()	32	static
+main.cpp:174:6:void SystemClock_Config()	232	static
+main.cpp:236:13:void MX_ETH_Init()	8	static
+main.cpp:278:13:void MX_I2C1_Init()	8	static
+main.cpp:324:13:void MX_USART3_UART_Init()	8	static
+main.cpp:359:13:void MX_USB_OTG_FS_PCD_Init()	8	static
+main.cpp:394:13:void MX_GPIO_Init()	56	static
+main.cpp:443:7:bool BME280::read(uint8_t*, uint8_t, uint8_t)	40	static
+main.cpp:474:6:void Error_Handler()	4	static
+main.cpp:480:1:void __static_initialization_and_destruction_0(int, int)	16	static
+main.cpp:480:1:cpp)	8	static
+main.cpp:480:1:cpp)	8	static

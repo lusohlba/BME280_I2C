@@ -23,7 +23,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <iostream>
+using namespace std;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -63,6 +64,31 @@ static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
+class BME280{
+private:
+	uint8_t CONIFIG_REG_ADD = 0xF5; //Adress of the config register
+	uint8_t CTRL_M_REG_ADD = 0xF4; //Adress of the controll register for temperature and pressure
+	uint8_t CTRL_H_REG_ADD = 0xF2; //Adress of the controll register for humidity
+	uint8_t RESET_REG_ADD = 0xE0; //Adress of the reset register
+
+	//bool read(uint8_t *buffer, uint8_t size, uint8_t add);
+	bool  write(uint8_t *buffer_tx);
+
+public:
+	uint8_t SLAVE_READ_ADDRESS = 0xED; //Adress of the BME280 in READ mode
+	uint8_t SLAVE_WRITE_ADDRESS = 0xEC; //Adress of the BME280 in WRITE mode
+	uint8_t ID_REG_ADDRESSS = 0xD0; //Adress of the register containig the Chip ID
+	uint8_t STATUS_REG_ADDRESS = 0xF3; //Adress of the status register
+
+	//BME280(uint8_t SLAVE_READ_ADDRESS = 0xED, uint8_t SLAVE_WRITE_ADDRESS = 0xEC);
+	void init(uint8_t profile);
+	bool read(uint8_t *buffer, uint8_t size, uint8_t add);
+};
+
+
+void ptr_training(uint8_t *ptr2){
+	*ptr2 = 20;
+  }
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -104,6 +130,29 @@ int main(void)
   MX_USB_OTG_FS_PCD_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+
+  //Pointer Training
+  /*uint8_t arr[] = {0,0,0,0,0,0,0,0}; //Array anlegen und mit 0 füllen
+  uint8_t *ptr; //Pointer anlegen
+  ptr = arr; //Pointer auf die Adresse von arr[0] setzen
+  *ptr =10; //arr[0] auf 10 setzen
+  ptr = &arr[1];
+  ptr_training(ptr);*/
+
+
+  BME280 bme280;
+  uint8_t buffer[12];
+  uint8_t *buf_ptr;
+  buf_ptr = buffer;
+
+  if (bme280.read(buf_ptr,1,0xD0) == true && buffer[0]==0x60){
+	  HAL_GPIO_WritePin(GPIOB,LD2_Pin, GPIO_PIN_SET);
+  }
+
+
+
+
+
 
   /* USER CODE END 2 */
 
@@ -389,6 +438,32 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+
+bool  BME280::read(uint8_t *buffer, uint8_t size, uint8_t add){
+	HAL_StatusTypeDef ret;
+	*buffer = add;
+	bool val = true;
+	ret = HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
+	if ( ret != HAL_OK ) {
+		val = false;
+	}else {
+		ret = HAL_I2C_Master_Transmit(&hi2c1, SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
+		if ( ret != HAL_OK ){
+			val = false;
+		}else{
+			ret = HAL_I2C_Master_Receive(&hi2c1,SLAVE_READ_ADDRESS, buffer, size, HAL_MAX_DELAY); // Receiving the data of the register and storing it into the buffer.
+			if ( ret == HAL_OK ){
+				val = true;
+			}
+		}
+	}
+
+
+	return val;
+}
+
+
 
 /* USER CODE END 4 */
 
