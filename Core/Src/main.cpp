@@ -72,11 +72,11 @@ private:
 	uint8_t RESET_REG_ADD = 0xE0; //Adress of the reset register
 
 	bool read(uint8_t *buffer, uint8_t size, uint8_t add);
-	bool write(uint8_t *buffer_tx);
+	bool write(uint8_t add, uint8_t data);
 
 public:
-	uint8_t SLAVE_READ_ADDRESS = 0xED; //Adress of the BME280 in READ mode
-	uint8_t SLAVE_WRITE_ADDRESS = 0xEC; //Adress of the BME280 in WRITE mode
+	uint8_t SLAVE_READ_ADDRESS; //Adress of the BME280 in READ mode
+	uint8_t SLAVE_WRITE_ADDRESS; //Adress of the BME280 in WRITE mode
 	uint8_t ID_REG_ADDRESSS = 0xD0; //Adress of the register containig the Chip ID
 	uint8_t STATUS_REG_ADDRESS = 0xF3; //Adress of the status register
 
@@ -437,8 +437,9 @@ BME280::BME280(uint8_t SLAVE_READ_ADDRESS, uint8_t SLAVE_WRITE_ADDRESS){
 
 bool  BME280::read(uint8_t *buffer, uint8_t size, uint8_t add){
 	HAL_StatusTypeDef ret;
-	*buffer = add;
 	bool val = true;
+	*buffer = add;
+
 	ret = HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
 	if ( ret != HAL_OK ) {
 		val = false;
@@ -452,6 +453,21 @@ bool  BME280::read(uint8_t *buffer, uint8_t size, uint8_t add){
 				val = true;
 			}
 		}
+	}
+	return val;
+}
+
+bool BME280::write(uint8_t add, uint8_t data){
+	HAL_StatusTypeDef ret;
+	bool val = true;
+
+	uint8_t buffer [2];
+	buffer[0] = add;
+	buffer[1] = data;
+
+	ret =  HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 2, HAL_MAX_DELAY );
+	if ( ret != HAL_OK ) {
+			val = false;
 	}
 	return val;
 }
