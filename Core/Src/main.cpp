@@ -71,8 +71,8 @@ private:
 	uint8_t CTRL_H_REG_ADD = 0xF2; //Adress of the controll register for humidity
 	uint8_t RESET_REG_ADD = 0xE0; //Adress of the reset register
 
-	//bool read(uint8_t *buffer, uint8_t size, uint8_t add);
-	bool  write(uint8_t *buffer_tx);
+	bool read(uint8_t *buffer, uint8_t size, uint8_t add);
+	bool write(uint8_t *buffer_tx);
 
 public:
 	uint8_t SLAVE_READ_ADDRESS = 0xED; //Adress of the BME280 in READ mode
@@ -80,9 +80,8 @@ public:
 	uint8_t ID_REG_ADDRESSS = 0xD0; //Adress of the register containig the Chip ID
 	uint8_t STATUS_REG_ADDRESS = 0xF3; //Adress of the status register
 
-	//BME280(uint8_t SLAVE_READ_ADDRESS = 0xED, uint8_t SLAVE_WRITE_ADDRESS = 0xEC);
+	BME280(uint8_t SLAVE_READ_ADDRESS = 0xED, uint8_t SLAVE_WRITE_ADDRESS = 0xEC);
 	void init(uint8_t profile);
-	bool read(uint8_t *buffer, uint8_t size, uint8_t add);
 };
 
 
@@ -144,15 +143,6 @@ int main(void)
   uint8_t buffer[12];
   uint8_t *buf_ptr;
   buf_ptr = buffer;
-
-  if (bme280.read(buf_ptr,1,0xD0) == true && buffer[0]==0x60){
-	  HAL_GPIO_WritePin(GPIOB,LD2_Pin, GPIO_PIN_SET);
-  }
-
-
-
-
-
 
   /* USER CODE END 2 */
 
@@ -439,6 +429,11 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+BME280::BME280(uint8_t SLAVE_READ_ADDRESS, uint8_t SLAVE_WRITE_ADDRESS){
+		this->SLAVE_READ_ADDRESS = SLAVE_READ_ADDRESS;
+		this->SLAVE_WRITE_ADDRESS = SLAVE_WRITE_ADDRESS;
+	}
+
 
 bool  BME280::read(uint8_t *buffer, uint8_t size, uint8_t add){
 	HAL_StatusTypeDef ret;
@@ -458,8 +453,6 @@ bool  BME280::read(uint8_t *buffer, uint8_t size, uint8_t add){
 			}
 		}
 	}
-
-
 	return val;
 }
 
