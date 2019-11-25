@@ -71,6 +71,9 @@ private:
 	uint8_t CTRL_H_REG_ADD = 0xF2; //Adress of the controll register for humidity
 	uint8_t RESET_REG_ADD = 0xE0; //Adress of the reset register
 	uint8_t STATUS_REG_ADDRESS = 0xF3; //Adress of the status register
+	uint8_t TEMP_MSB_REG_ADD = 0xFA;
+	uint8_t TEMP_LSB_REG_ADD = 0xFB;
+	uint8_t TEMP_XLSB_REG_ADD = 0xFC;
 
 	bool read(uint8_t *buffer, uint8_t size, uint8_t add);
 	bool write(uint8_t add, uint8_t data);
@@ -83,7 +86,7 @@ public:
 
 	BME280(uint8_t SLAVE_READ_ADDRESS = 0xED, uint8_t SLAVE_WRITE_ADDRESS = 0xEC);
 	void init(uint8_t mode);
-	void get_temperature(uint8_t *buffer);
+	void get_temperature(uint32_t *buffer);
 
 };
 
@@ -143,16 +146,15 @@ int main(void)
 
 
   BME280 bme280;
-  uint8_t buffer[]={4,0,0,0,0,0,0,0,0,0,0,0};
-  uint8_t *buf_ptr;
+  uint32_t buffer[1];
+  uint32_t *buf_ptr;
   buf_ptr = buffer;
 
   uint8_t WEATHER_MONITORING = 1;
 
-
- //bme280.write(0xF4,0x56);
- // bme280.init(WEATHER_MONITORING);
- //bme280.read(buf_ptr, 1, bme280.CTRL_M_REG_ADD);
+  bme280.init(WEATHER_MONITORING);
+  bme280.get_temperature(buf_ptr);
+ //bme280.read(buf_ptr, 1, bme280.CTRL_M_REG_ADD);*/
 
 
   /* USER CODE END 2 */
@@ -503,6 +505,28 @@ void BME280::init(uint8_t mode){
 	}
 }
 
+void BME280::get_temperature(uint32_t *buffer){
+	uint8_t buf_msb[1];
+	uint8_t buf_lsb[1];
+	uint8_t buf_xlsb[1];
+	uint32_t value_msb;
+	uint32_t value_lsb;
+	uint32_t value_xlsb;
+	uint32_t value;
+
+	read(buf_msb,1,TEMP_MSB_REG_ADD);
+	HAL_Delay(500);
+	read(buf_lsb,1,TEMP_LSB_REG_ADD);
+	HAL_Delay(500);
+	read(buf_xlsb,1,TEMP_XLSB_REG_ADD);
+
+	value_msb = buf_msb[0] << 12;
+	value_lsb = buf_lsb[0] << 4;
+	value_xlsb = buf_xlsb[0] >>4;
+
+	value = value_msb | value_lsb | value_xlsb;
+	*buffer = value;
+}
 
 
 /* USER CODE END 4 */

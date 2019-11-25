@@ -1,6 +1,6 @@
 gthr-default.h:229:1:int __gthread_key_delete(__gthread_key_t)	16	static
-main.cpp:93:6:void ptr_training(uint8_t*)	16	static
-main.cpp:107:5:int main()	40	static
+main.cpp:94:6:void ptr_training(uint8_t*)	16	static
+main.cpp:108:5:int main()	32	static
 main.cpp:177:6:void SystemClock_Config()	232	static
 main.cpp:239:13:void MX_ETH_Init()	8	static
 main.cpp:281:13:void MX_I2C1_Init()	8	static
@@ -11,7 +11,8 @@ main.cpp:445:1:BME280::BME280(uint8_t, uint8_t)	16	static
 main.cpp:451:7:bool BME280::read(uint8_t*, uint8_t, uint8_t)	40	static
 main.cpp:473:6:bool BME280::write(uint8_t, uint8_t)	32	static
 main.cpp:488:6:void BME280::init(uint8_t)	16	static
-main.cpp:516:6:void Error_Handler()	4	static
-main.cpp:522:1:void __static_initialization_and_destruction_0(int, int)	16	static
-main.cpp:522:1:cpp)	8	static
-main.cpp:522:1:cpp)	8	static
+main.cpp:508:6:void BME280::get_temperature(uint32_t*)	48	static
+main.cpp:538:6:void Error_Handler()	4	static
+main.cpp:544:1:void __static_initialization_and_destruction_0(int, int)	16	static
+main.cpp:544:1:cpp)	8	static
+main.cpp:544:1:cpp)	8	static
