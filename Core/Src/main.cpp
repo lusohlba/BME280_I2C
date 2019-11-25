@@ -70,6 +70,7 @@ private:
 	uint8_t CTRL_M_REG_ADD = 0xF4; //Adress of the controll register for temperature and pressure
 	uint8_t CTRL_H_REG_ADD = 0xF2; //Adress of the controll register for humidity
 	uint8_t RESET_REG_ADD = 0xE0; //Adress of the reset register
+	uint8_t STATUS_REG_ADDRESS = 0xF3; //Adress of the status register
 
 	bool read(uint8_t *buffer, uint8_t size, uint8_t add);
 	bool write(uint8_t add, uint8_t data);
@@ -78,10 +79,12 @@ public:
 	uint8_t SLAVE_READ_ADDRESS; //Adress of the BME280 in READ mode
 	uint8_t SLAVE_WRITE_ADDRESS; //Adress of the BME280 in WRITE mode
 	uint8_t ID_REG_ADDRESSS = 0xD0; //Adress of the register containig the Chip ID
-	uint8_t STATUS_REG_ADDRESS = 0xF3; //Adress of the status register
+
 
 	BME280(uint8_t SLAVE_READ_ADDRESS = 0xED, uint8_t SLAVE_WRITE_ADDRESS = 0xEC);
-	void init(uint8_t profile);
+	void init(uint8_t mode);
+	void get_temperature(uint8_t *buffer);
+
 };
 
 
@@ -140,9 +143,17 @@ int main(void)
 
 
   BME280 bme280;
-  uint8_t buffer[12];
+  uint8_t buffer[]={4,0,0,0,0,0,0,0,0,0,0,0};
   uint8_t *buf_ptr;
   buf_ptr = buffer;
+
+  uint8_t WEATHER_MONITORING = 1;
+
+
+ //bme280.write(0xF4,0x56);
+ // bme280.init(WEATHER_MONITORING);
+ //bme280.read(buf_ptr, 1, bme280.CTRL_M_REG_ADD);
+
 
   /* USER CODE END 2 */
 
@@ -470,6 +481,26 @@ bool BME280::write(uint8_t add, uint8_t data){
 			val = false;
 	}
 	return val;
+}
+
+void BME280::init(uint8_t mode){
+
+	//Mode 1: Weather monitoring
+	//Mode 2: Humidity sensing
+	//Mode 3: Indoor navigation
+	//Mode 4: Gaming
+	write(RESET_REG_ADD,0xB6);
+	switch (mode){
+		case 1:
+			HAL_Delay(500);
+			write(CTRL_M_REG_ADD,0x26);
+			HAL_Delay(500);
+			write(CTRL_H_REG_ADD,0x01);
+			HAL_Delay(500);
+			write(CONIFIG_REG_ADD,0xE0);
+			break;
+	//Modes 2-4 will be implemented soon.
+	}
 }
 
 
