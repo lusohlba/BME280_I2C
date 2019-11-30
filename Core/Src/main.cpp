@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <iostream>
+#include <cmath>
 using namespace std;
 /* USER CODE END Includes */
 
@@ -64,36 +65,159 @@ static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
+enum {
+  REGISTER_DIG_T1 = 0x88,
+  REGISTER_DIG_T2 = 0x8A,
+  REGISTER_DIG_T3 = 0x8C,
+
+  REGISTER_DIG_P1 = 0x8E,
+  REGISTER_DIG_P2 = 0x90,
+  REGISTER_DIG_P3 = 0x92,
+  REGISTER_DIG_P4 = 0x94,
+  REGISTER_DIG_P5 = 0x96,
+  REGISTER_DIG_P6 = 0x98,
+  REGISTER_DIG_P7 = 0x9A,
+  REGISTER_DIG_P8 = 0x9C,
+  REGISTER_DIG_P9 = 0x9E,
+
+  REGISTER_DIG_H1 = 0xA1,
+  REGISTER_DIG_H2 = 0xE1,
+  REGISTER_DIG_H3 = 0xE3,
+  REGISTER_DIG_H4 = 0xE4,
+  REGISTER_DIG_H5 = 0xE5,
+  REGISTER_DIG_H6 = 0xE7,
+
+  REGISTER_CHIPID = 0xD0,
+  REGISTER_VERSION = 0xD1,
+  REGISTER_SOFTRESET = 0xE0,
+
+  REGISTER_CAL26 = 0xE1, // R calibration stored in 0xE1-0xF0
+
+  REGISTER_CONTROLHUMID = 0xF2,
+  REGISTER_STATUS = 0XF3,
+  REGISTER_CONTROL = 0xF4,
+  REGISTER_CONFIG = 0xF5,
+  REGISTER_PRESSUREDATA = 0xF7,
+  REGISTER_TEMPDATA = 0xFA,
+  REGISTER_HUMIDDATA = 0xFD
+};
+
+typedef struct {
+  uint16_t dig_T1; ///< temperature compensation value
+  int16_t dig_T2;  ///< temperature compensation value
+  int16_t dig_T3;  ///< temperature compensation value
+
+  uint16_t dig_P1; ///< pressure compensation value
+  int16_t dig_P2;  ///< pressure compensation value
+  int16_t dig_P3;  ///< pressure compensation value
+  int16_t dig_P4;  ///< pressure compensation value
+  int16_t dig_P5;  ///< pressure compensation value
+  int16_t dig_P6;  ///< pressure compensation value
+  int16_t dig_P7;  ///< pressure compensation value
+  int16_t dig_P8;  ///< pressure compensation value
+  int16_t dig_P9;  ///< pressure compensation value
+
+  uint8_t dig_H1; ///< humidity compensation value
+  int16_t dig_H2; ///< humidity compensation value
+  uint8_t dig_H3; ///< humidity compensation value
+  int16_t dig_H4; ///< humidity compensation value
+  int16_t dig_H5; ///< humidity compensation value
+  int8_t dig_H6;  ///< humidity compensation value
+} calibration_data;
+
+
+
 class BME280{
 private:
-	uint8_t CONIFIG_REG_ADD = 0xF5; //Adress of the config register
-	uint8_t CTRL_M_REG_ADD = 0xF4; //Adress of the controll register for temperature and pressure
-	uint8_t CTRL_H_REG_ADD = 0xF2; //Adress of the controll register for humidity
-	uint8_t RESET_REG_ADD = 0xE0; //Adress of the reset register
-	uint8_t STATUS_REG_ADDRESS = 0xF3; //Adress of the status register
-	uint8_t TEMP_MSB_REG_ADD = 0xFA;
-	uint8_t TEMP_LSB_REG_ADD = 0xFB;
-	uint8_t TEMP_XLSB_REG_ADD = 0xFC;
-
-	bool read(uint8_t *buffer, uint8_t size, uint8_t add);
+	uint8_t read8(uint8_t add);
+	uint16_t read16(uint8_t add);
+	uint16_t read16_LE(uint8_t add);
+	int16_t readS16(uint8_t add);
+	int16_t readS16_LE(uint8_t add);
+	uint32_t read24(uint8_t add);
 	bool write(uint8_t add, uint8_t data);
+	calibration_data calib;
+	int32_t temp_fine;
 
+	 struct config {
+	    unsigned int t_sb : 3; ///< inactive duration (standby time) in normal mode
+	    unsigned int filter : 3; ///< filter settings
+	    // unused - don't set
+	    unsigned int none : 1;     ///< unused - don't set
+	    unsigned int spi3w_en : 1; ///< unused - don't set
+
+	    /// @return combined config register
+	    unsigned int get() { return (t_sb << 5) | (filter << 2) | spi3w_en; }
+	  };
+	  config configReg;
+
+	  struct ctrl_meas {
+	     unsigned int osrs_t : 3; ///< temperature oversampling
+	     unsigned int osrs_p : 3; ///< pressure oversampling
+	     unsigned int mode : 2; ///< device mode
+
+	     /// @return combined ctrl register
+	     unsigned int get() { return (osrs_t << 5) | (osrs_p << 2) | mode; }
+	   };
+	   ctrl_meas measReg;
+
+	   struct ctrl_hum {
+	       /// unused - don't set
+	       unsigned int none : 5;
+	       unsigned int osrs_h : 3; ///< pressure oversampling
+
+	       /// @return combined ctrl hum register
+	       unsigned int get() { return (osrs_h); }
+	     };
+	     ctrl_hum humReg; //!< hum register object
 public:
+
 	uint8_t SLAVE_READ_ADDRESS; //Adress of the BME280 in READ mode
 	uint8_t SLAVE_WRITE_ADDRESS; //Adress of the BME280 in WRITE mode
-	uint8_t ID_REG_ADDRESSS = 0xD0; //Adress of the register containig the Chip ID
 
+
+	enum sensor_sampling {
+	    SAMPLING_NONE = 0b000,
+	    SAMPLING_X1 = 0b001,
+	    SAMPLING_X2 = 0b010,
+	    SAMPLING_X4 = 0b011,
+	    SAMPLING_X8 = 0b100,
+	    SAMPLING_X16 = 0b101
+	  };
+
+	enum sensor_mode {
+	    MODE_SLEEP = 0b00,
+	    MODE_FORCED = 0b01,
+	    MODE_NORMAL = 0b11
+	  };
+
+	enum sensor_filter {
+	    FILTER_OFF = 0b000,
+	    FILTER_X2 = 0b001,
+	    FILTER_X4 = 0b010,
+	    FILTER_X8 = 0b011,
+	    FILTER_X16 = 0b100
+	  };
+
+	enum standby_duration {
+	    STANDBY_MS_0_5 = 0b000,
+	    STANDBY_MS_10 = 0b110,
+	    STANDBY_MS_20 = 0b111,
+	    STANDBY_MS_62_5 = 0b001,
+	    STANDBY_MS_125 = 0b010,
+	    STANDBY_MS_250 = 0b011,
+	    STANDBY_MS_500 = 0b100,
+	    STANDBY_MS_1000 = 0b101
+	  };
 
 	BME280(uint8_t SLAVE_READ_ADDRESS = 0xED, uint8_t SLAVE_WRITE_ADDRESS = 0xEC);
-	void init(uint8_t mode);
-	void get_temperature(uint32_t *buffer);
+	bool init();
+	void get_coefficients(void);
+	void set_profile(uint8_t profile);
+	float get_temperature(void);
 
 };
 
-
-void ptr_training(uint8_t *ptr2){
-	*ptr2 = 20;
-  }
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -136,25 +260,9 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
-  //Pointer Training
-  /*uint8_t arr[] = {0,0,0,0,0,0,0,0}; //Array anlegen und mit 0 füllen
-  uint8_t *ptr; //Pointer anlegen
-  ptr = arr; //Pointer auf die Adresse von arr[0] setzen
-  *ptr =10; //arr[0] auf 10 setzen
-  ptr = &arr[1];
-  ptr_training(ptr);*/
-
-
   BME280 bme280;
-  uint32_t buffer[1];
-  uint32_t *buf_ptr;
-  buf_ptr = buffer;
-
-  uint8_t WEATHER_MONITORING = 1;
-
-  bme280.init(WEATHER_MONITORING);
-  bme280.get_temperature(buf_ptr);
- //bme280.read(buf_ptr, 1, bme280.CTRL_M_REG_ADD);*/
+  bme280.init();
+  double temperature = bme280.get_temperature();
 
 
   /* USER CODE END 2 */
@@ -448,84 +556,160 @@ BME280::BME280(uint8_t SLAVE_READ_ADDRESS, uint8_t SLAVE_WRITE_ADDRESS){
 	}
 
 
-bool  BME280::read(uint8_t *buffer, uint8_t size, uint8_t add){
-	HAL_StatusTypeDef ret;
-	bool val = true;
-	*buffer = add;
-
-	ret = HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
-	if ( ret != HAL_OK ) {
-		val = false;
-	}else {
-		ret = HAL_I2C_Master_Transmit(&hi2c1, SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
-		if ( ret != HAL_OK ){
-			val = false;
-		}else{
-			ret = HAL_I2C_Master_Receive(&hi2c1,SLAVE_READ_ADDRESS, buffer, size, HAL_MAX_DELAY); // Receiving the data of the register and storing it into the buffer.
-			if ( ret == HAL_OK ){
-				val = true;
-			}
-		}
-	}
-	return val;
+uint8_t  BME280::read8(uint8_t add){
+	uint8_t buffer[] = {add};
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
+	HAL_I2C_Master_Receive(&hi2c1,SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY); // Receiving the data of the register and storing it into the buffer.
+	return buffer[0];
 }
+
+uint16_t  BME280::read16(uint8_t add){
+	uint8_t buffer[] = {add};
+	uint16_t data;
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
+	HAL_I2C_Master_Receive(&hi2c1,SLAVE_READ_ADDRESS, buffer, 2, HAL_MAX_DELAY); // Receiving the data of the register and storing it into the buffer.
+	data = buffer[0] << 8 | buffer[1];
+	return data;
+}
+
+uint16_t  BME280::read16_LE(uint8_t add){
+	uint8_t buffer[] = {add};
+	uint16_t data;
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
+	HAL_I2C_Master_Receive(&hi2c1,SLAVE_READ_ADDRESS, buffer, 2, HAL_MAX_DELAY); // Receiving the data of the register and storing it into the buffer.
+	data = buffer[1] << 8 | buffer[0];
+	return data;
+}
+
+int16_t  BME280::readS16(uint8_t add){
+	return (int16_t)read16(add);
+}
+
+int16_t  BME280::readS16_LE(uint8_t add){
+	return (int16_t)read16_LE(add);
+}
+
+uint32_t  BME280::read24(uint8_t add){
+	uint8_t buffer[] = {add};
+	uint32_t data;
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
+	HAL_I2C_Master_Receive(&hi2c1,SLAVE_READ_ADDRESS, buffer, 3, HAL_MAX_DELAY); // Receiving the data of the register and storing it into the buffer.
+	data = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
+	return data;
+}
+
+
 
 bool BME280::write(uint8_t add, uint8_t data){
 	HAL_StatusTypeDef ret;
-	bool val = true;
+	bool status = true;
 
-	uint8_t buffer [2];
-	buffer[0] = add;
-	buffer[1] = data;
+	uint8_t buffer[]={add, data};
 
 	ret =  HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 2, HAL_MAX_DELAY );
 	if ( ret != HAL_OK ) {
-			val = false;
+		status = false;
 	}
-	return val;
+	return status;
 }
 
-void BME280::init(uint8_t mode){
 
-	//Mode 1: Weather monitoring
-	//Mode 2: Humidity sensing
-	//Mode 3: Indoor navigation
-	//Mode 4: Gaming
-	write(RESET_REG_ADD,0xB6);
-	switch (mode){
-		case 1:
-			HAL_Delay(500);
-			write(CTRL_M_REG_ADD,0x26);
-			HAL_Delay(500);
-			write(CTRL_H_REG_ADD,0x01);
-			HAL_Delay(500);
-			write(CONIFIG_REG_ADD,0xE0);
-			break;
-	//Modes 2-4 will be implemented soon.
+bool BME280::init(){
+	bool status = true;
+
+	uint8_t chip_id = read8(REGISTER_CHIPID);
+	if (chip_id != 0x60){
+		status = false;
 	}
+
+	write(REGISTER_SOFTRESET,0xB6);
+	HAL_Delay(400);
+
+	get_coefficients();
+
+	set_profile(0);
+
+	HAL_Delay(100);
+
+	return status;
 }
 
-void BME280::get_temperature(uint32_t *buffer){
-	uint8_t buf_msb[1];
-	uint8_t buf_lsb[1];
-	uint8_t buf_xlsb[1];
-	uint32_t value_msb;
-	uint32_t value_lsb;
-	uint32_t value_xlsb;
-	uint32_t value;
+void BME280::get_coefficients(void){
+	calib.dig_T1 = read16_LE(REGISTER_DIG_T1);
+	calib.dig_T2 = readS16_LE(REGISTER_DIG_T2);
+	calib.dig_T3 = readS16_LE(REGISTER_DIG_T3);
 
-	read(buf_msb,1,TEMP_MSB_REG_ADD);
-	HAL_Delay(500);
-	read(buf_lsb,1,TEMP_LSB_REG_ADD);
-	HAL_Delay(500);
-	read(buf_xlsb,1,TEMP_XLSB_REG_ADD);
+	calib.dig_P1 = read16_LE(REGISTER_DIG_P1);
+	calib.dig_P2 = readS16_LE(REGISTER_DIG_P2);
+	calib.dig_P3 = readS16_LE(REGISTER_DIG_P3);
+	calib.dig_P4 = readS16_LE(REGISTER_DIG_P4);
+	calib.dig_P5 = readS16_LE(REGISTER_DIG_P5);
+	calib.dig_P6 = readS16_LE(REGISTER_DIG_P6);
+	calib.dig_P7 = readS16_LE(REGISTER_DIG_P7);
+	calib.dig_P8 = readS16_LE(REGISTER_DIG_P8);
+	calib.dig_P9 = readS16_LE(REGISTER_DIG_P9);
 
-	value_msb = buf_msb[0] << 12;
-	value_lsb = buf_lsb[0] << 4;
-	value_xlsb = buf_xlsb[0] >>4;
+	calib.dig_H1 = read8(REGISTER_DIG_H1);
+	calib.dig_H2 = readS16_LE(REGISTER_DIG_H2);
+	calib.dig_H3 = read8(REGISTER_DIG_H3);
+	calib.dig_H4 = (read8(REGISTER_DIG_H4) << 4) |
+	                         (read8(REGISTER_DIG_H4 + 1) & 0xF);
+	calib.dig_H5 = (read8(REGISTER_DIG_H5 + 1) << 4) |
+	                         (read8(REGISTER_DIG_H5) >> 4);
+	calib.dig_H6 = (int8_t)read8(REGISTER_DIG_H6);
+}
 
-	value = value_msb | value_lsb | value_xlsb;
-	*buffer = value;
+void BME280::set_profile(uint8_t profile){
+	// 0: Default
+	// 1: Weather monitoring
+	// 2: Humidity sensing
+	// 3: Indoor navigation
+	// 4: Gaming
+	switch (profile){
+	case 0:
+		break;
+	case 1:
+		measReg.mode = MODE_FORCED;
+		measReg.osrs_t = SAMPLING_X1;
+		measReg.osrs_p = SAMPLING_X1;
+		humReg.osrs_h = SAMPLING_X1;
+		configReg.filter = FILTER_OFF;
+		configReg.t_sb = STANDBY_MS_20;
+		break;
+	}
+
+	write(REGISTER_CONTROL, MODE_SLEEP);
+	write(REGISTER_CONTROLHUMID, humReg.get());
+	write(REGISTER_CONFIG, configReg.get());
+	write(REGISTER_CONTROL, measReg.get());
+}
+
+float BME280::get_temperature(void){
+	int32_t var1, var2;
+	int32_t digial_temp = read24(REGISTER_TEMPDATA);
+
+	if (digial_temp == 0x800000) // value in case temp measurement was disabled
+	    return NAN;
+	digial_temp >>=4;
+
+	var1 = ((((digial_temp >> 3) - ((int32_t)calib.dig_T1 << 1))) *
+	          ((int32_t)calib.dig_T2)) >>
+	         11;
+
+	  var2 = (((((digial_temp >> 4) - ((int32_t)calib.dig_T1)) *
+	            ((digial_temp >> 4) - ((int32_t)calib.dig_T1))) >>
+	           12) *
+	          ((int32_t)calib.dig_T3)) >>
+	         14;
+
+	 temp_fine = var1 + var2;
+
+	 float temp = (temp_fine * 5 + 128) >> 8;
+	 return temp / 100;
 }
 
 
