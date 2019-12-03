@@ -25,6 +25,10 @@
 /* USER CODE BEGIN Includes */
 #include <iostream>
 #include <cmath>
+#include <cstdlib>
+#include <math.h>
+#include <string.h>
+#include <stdio.h>
 using namespace std;
 /* USER CODE END Includes */
 
@@ -211,10 +215,13 @@ public:
 	  };
 
 	BME280(uint8_t SLAVE_READ_ADDRESS = 0xED, uint8_t SLAVE_WRITE_ADDRESS = 0xEC);
-	bool init();
+	bool init(uint8_t profile);
 	void get_coefficients(void);
 	void set_profile(uint8_t profile);
 	float get_temperature(void);
+	float get_pressure();
+	float get_altitude(void);
+
 
 };
 
@@ -232,7 +239,10 @@ public:
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	uint8_t buf[12];
+	float temp_c;
+	float press;
+	float alt;
   /* USER CODE END 1 */
   
 
@@ -261,8 +271,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   BME280 bme280;
-  bme280.init();
-  double temperature = bme280.get_temperature();
 
 
   /* USER CODE END 2 */
@@ -271,6 +279,15 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  bme280.init(1);
+	  alt = bme280.get_altitude();
+	  alt *= 100;
+	          sprintf((char*)buf,
+	                "%u.%u m\r\n",
+	                ((unsigned int)alt / 100),
+	                ((unsigned int)alt % 100));
+	 HAL_UART_Transmit(&huart3, buf, strlen((char*)buf), HAL_MAX_DELAY);
+	 HAL_Delay(500);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -618,7 +635,7 @@ bool BME280::write(uint8_t add, uint8_t data){
 }
 
 
-bool BME280::init(){
+bool BME280::init(uint8_t profile){
 	bool status = true;
 
 	uint8_t chip_id = read8(REGISTER_CHIPID);
@@ -631,7 +648,7 @@ bool BME280::init(){
 
 	get_coefficients();
 
-	set_profile(0);
+	set_profile(profile);
 
 	HAL_Delay(100);
 
@@ -678,8 +695,31 @@ void BME280::set_profile(uint8_t profile){
 		measReg.osrs_p = SAMPLING_X1;
 		humReg.osrs_h = SAMPLING_X1;
 		configReg.filter = FILTER_OFF;
-		configReg.t_sb = STANDBY_MS_20;
+		configReg.t_sb = STANDBY_MS_500;
 		break;
+	case 2:
+		measReg.mode = MODE_FORCED;
+		measReg.osrs_t = SAMPLING_X1;
+		measReg.osrs_p = SAMPLING_NONE;
+		humReg.osrs_h = SAMPLING_X1;
+		configReg.filter = FILTER_OFF;
+		configReg.t_sb = STANDBY_MS_1000;
+		break;
+	case 3:
+		measReg.mode = MODE_NORMAL;
+		measReg.osrs_t = SAMPLING_X2;
+		measReg.osrs_p = SAMPLING_X16;
+		humReg.osrs_h = SAMPLING_X1;
+		configReg.filter = FILTER_X16;
+		configReg.t_sb = STANDBY_MS_0_5;
+		break;
+	case 4:
+		measReg.mode = MODE_NORMAL;
+		measReg.osrs_t = SAMPLING_X1;
+		measReg.osrs_p = SAMPLING_X4;
+		humReg.osrs_h = SAMPLING_NONE;
+		configReg.filter = FILTER_X16;
+		configReg.t_sb = STANDBY_MS_0_5;
 	}
 
 	write(REGISTER_CONTROL, MODE_SLEEP);
@@ -692,7 +732,7 @@ float BME280::get_temperature(void){
 	int32_t var1, var2;
 	int32_t digial_temp = read24(REGISTER_TEMPDATA);
 
-	if (digial_temp == 0x800000) // value in case temp measurement was disabled
+	if (digial_temp == 0x800000)
 	    return NAN;
 	digial_temp >>=4;
 
@@ -710,6 +750,45 @@ float BME280::get_temperature(void){
 
 	 float temp = (temp_fine * 5 + 128) >> 8;
 	 return temp / 100;
+}
+
+float BME280::get_pressure(){
+	int64_t var1, var2, press;
+	get_temperature();
+	int32_t digital_press = read24(REGISTER_PRESSUREDATA);
+
+	if (digital_press == 0x800000)
+	    return NAN;
+	digital_press >>= 4;
+
+	var1 = ((int64_t)temp_fine) - 128000;
+	var2 = var1 * var1 * (int64_t)calib.dig_P6;
+	var2 = var2 + ((var1 * (int64_t)calib.dig_P5) << 17);
+	var2 = var2 + (((int64_t)calib.dig_P4) << 35);
+	var1 = ((var1 * var1 * (int64_t)calib.dig_P3) >> 8) +
+	         ((var1 * (int64_t)calib.dig_P2) << 12);
+	var1 =
+	      (((((int64_t)1) << 47) + var1)) * ((int64_t)calib.dig_P1) >> 33;
+
+	 if (var1 == 0) {
+	    return 0;
+	  }
+	 press = 1048576 - digital_press;
+	 press = (((press << 31) - var2) * 3125) / var1;
+	 var1 = (((int64_t)calib.dig_P9) * (press >> 13) * (press >> 13)) >> 25;
+	 var2 = (((int64_t)calib.dig_P8) * press) >> 19;
+	 press = ((press + var1 + var2) >> 8) + (((int64_t)calib.dig_P7) << 4);
+
+	 return (float)press / 256;
+
+}
+
+float BME280::get_altitude(void){
+	float sea_level =  101325; //Pa
+	float current_press = get_pressure(); //Pressure in Pa
+	float current_temp = get_temperature() + 273.15; // Temperature in Kelvin
+	float altitude = (current_temp/0.0065)*(1-pow((current_press/sea_level),(1/5.255)));
+	return altitude;
 }
 
 

@@ -1,27 +1,30 @@
 gthr-default.h:229:1:int __gthread_key_delete(__gthread_key_t)	16	static
-main.cpp:150:19:unsigned int BME280::config::get()	16	static
-main.cpp:160:20:unsigned int BME280::ctrl_meas::get()	16	static
-main.cpp:170:22:unsigned int BME280::ctrl_hum::get()	16	static
-main.cpp:232:5:int main()	72	static
-main.cpp:285:6:void SystemClock_Config()	232	static
-main.cpp:347:13:void MX_ETH_Init()	8	static
-main.cpp:389:13:void MX_I2C1_Init()	8	static
-main.cpp:435:13:void MX_USART3_UART_Init()	8	static
-main.cpp:470:13:void MX_USB_OTG_FS_PCD_Init()	8	static
-main.cpp:505:13:void MX_GPIO_Init()	56	static
-main.cpp:553:1:BME280::BME280(uint8_t, uint8_t)	16	static
-main.cpp:559:10:uint8_t BME280::read8(uint8_t)	32	static
-main.cpp:567:11:uint16_t BME280::read16(uint8_t)	32	static
-main.cpp:577:11:uint16_t BME280::read16_LE(uint8_t)	32	static
-main.cpp:587:10:int16_t BME280::readS16(uint8_t)	16	static
-main.cpp:591:10:int16_t BME280::readS16_LE(uint8_t)	16	static
-main.cpp:595:11:uint32_t BME280::read24(uint8_t)	32	static
-main.cpp:607:6:bool BME280::write(uint8_t, uint8_t)	32	static
-main.cpp:621:6:bool BME280::init()	24	static
-main.cpp:641:6:void BME280::get_coefficients()	24	static
-main.cpp:666:6:void BME280::set_profile(uint8_t)	16	static
-main.cpp:691:7:float BME280::get_temperature()	32	static
-main.cpp:722:6:void Error_Handler()	4	static
-main.cpp:728:1:void __static_initialization_and_destruction_0(int, int)	16	static
-main.cpp:728:1:cpp)	8	static
-main.cpp:728:1:cpp)	8	static
+main.cpp:154:19:unsigned int BME280::config::get()	16	static
+main.cpp:164:20:unsigned int BME280::ctrl_meas::get()	16	static
+main.cpp:174:22:unsigned int BME280::ctrl_hum::get()	16	static
+main.cpp:239:5:int main()	88	static
+main.cpp:302:6:void SystemClock_Config()	232	static
+main.cpp:364:13:void MX_ETH_Init()	8	static
+main.cpp:406:13:void MX_I2C1_Init()	8	static
+main.cpp:452:13:void MX_USART3_UART_Init()	8	static
+main.cpp:487:13:void MX_USB_OTG_FS_PCD_Init()	8	static
+main.cpp:522:13:void MX_GPIO_Init()	56	static
+main.cpp:570:1:BME280::BME280(uint8_t, uint8_t)	16	static
+main.cpp:576:10:uint8_t BME280::read8(uint8_t)	32	static
+main.cpp:584:11:uint16_t BME280::read16(uint8_t)	32	static
+main.cpp:594:11:uint16_t BME280::read16_LE(uint8_t)	32	static
+main.cpp:604:10:int16_t BME280::readS16(uint8_t)	16	static
+main.cpp:608:10:int16_t BME280::readS16_LE(uint8_t)	16	static
+main.cpp:612:11:uint32_t BME280::read24(uint8_t)	32	static
+main.cpp:624:6:bool BME280::write(uint8_t, uint8_t)	32	static
+main.cpp:638:6:bool BME280::init(uint8_t)	24	static
+main.cpp:658:6:void BME280::get_coefficients()	24	static
+main.cpp:683:6:void BME280::set_profile(uint8_t)	16	static
+main.cpp:731:7:float BME280::get_temperature()	32	static
+main.cpp:755:7:float BME280::get_pressure()	72	static
+main.cpp:786:7:float BME280::get_altitude()	40	static
+main.cpp:801:6:void Error_Handler()	4	static
+cmath:415:5:constexpr typename __gnu_cxx::__promote_2<_Tp, _Up>::__type std::pow(_Tp, _Up) [with _Tp = float; _Up = double]	24	static
+main.cpp:807:1:void __static_initialization_and_destruction_0(int, int)	16	static
+main.cpp:807:1:cpp)	8	static
+main.cpp:807:1:cpp)	8	static
