@@ -69,7 +69,9 @@ static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
+//Adresses of the different BME280 registers.
 enum {
+//Calibration data registers.
   REGISTER_DIG_T1 = 0x88,
   REGISTER_DIG_T2 = 0x8A,
   REGISTER_DIG_T3 = 0x8C,
@@ -91,46 +93,50 @@ enum {
   REGISTER_DIG_H5 = 0xE5,
   REGISTER_DIG_H6 = 0xE7,
 
+ //Controll and stetting registers.
   REGISTER_CHIPID = 0xD0,
   REGISTER_VERSION = 0xD1,
   REGISTER_SOFTRESET = 0xE0,
 
-  REGISTER_CAL26 = 0xE1, // R calibration stored in 0xE1-0xF0
+  REGISTER_CAL26 = 0xE1,
 
   REGISTER_CONTROLHUMID = 0xF2,
   REGISTER_STATUS = 0XF3,
   REGISTER_CONTROL = 0xF4,
   REGISTER_CONFIG = 0xF5,
+
+ //Measurement data registers.
   REGISTER_PRESSUREDATA = 0xF7,
   REGISTER_TEMPDATA = 0xFA,
   REGISTER_HUMIDDATA = 0xFD
 };
 
+//Structure to store the calibration data.
 typedef struct {
-  uint16_t dig_T1; ///< temperature compensation value
-  int16_t dig_T2;  ///< temperature compensation value
-  int16_t dig_T3;  ///< temperature compensation value
+  uint16_t dig_T1;
+  int16_t dig_T2;
+  int16_t dig_T3;
 
-  uint16_t dig_P1; ///< pressure compensation value
-  int16_t dig_P2;  ///< pressure compensation value
-  int16_t dig_P3;  ///< pressure compensation value
-  int16_t dig_P4;  ///< pressure compensation value
-  int16_t dig_P5;  ///< pressure compensation value
-  int16_t dig_P6;  ///< pressure compensation value
-  int16_t dig_P7;  ///< pressure compensation value
-  int16_t dig_P8;  ///< pressure compensation value
-  int16_t dig_P9;  ///< pressure compensation value
+  uint16_t dig_P1;
+  int16_t dig_P2;
+  int16_t dig_P3;
+  int16_t dig_P4;
+  int16_t dig_P5;
+  int16_t dig_P6;
+  int16_t dig_P7;
+  int16_t dig_P8;
+  int16_t dig_P9;
 
-  uint8_t dig_H1; ///< humidity compensation value
-  int16_t dig_H2; ///< humidity compensation value
-  uint8_t dig_H3; ///< humidity compensation value
-  int16_t dig_H4; ///< humidity compensation value
-  int16_t dig_H5; ///< humidity compensation value
-  int8_t dig_H6;  ///< humidity compensation value
+  uint8_t dig_H1;
+  int16_t dig_H2;
+  uint8_t dig_H3;
+  int16_t dig_H4;
+  int16_t dig_H5;
+  int8_t dig_H6;
 } calibration_data;
 
 
-
+//BME280 class
 class BME280{
 private:
 	uint8_t read8(uint8_t add);
@@ -140,46 +146,54 @@ private:
 	int16_t readS16_LE(uint8_t add);
 	uint32_t read24(uint8_t add);
 	bool write(uint8_t add, uint8_t data);
+	void get_coefficients(void); //Reading the calibration data
+	void set_profile(uint8_t profile); //Choosing sensor setting
+
+protected:
 	calibration_data calib;
 	int32_t temp_fine;
 
+	//Structure containing the config registers bits.
 	 struct config {
-	    unsigned int t_sb : 3; ///< inactive duration (standby time) in normal mode
-	    unsigned int filter : 3; ///< filter settings
+	    unsigned int t_sb : 3;
+	    unsigned int filter : 3;
 	    // unused - don't set
-	    unsigned int none : 1;     ///< unused - don't set
-	    unsigned int spi3w_en : 1; ///< unused - don't set
+	    unsigned int none : 1;     // unused - don't set
+	    unsigned int spi3w_en : 1; // unused - don't set
 
-	    /// @return combined config register
+
 	    unsigned int get() { return (t_sb << 5) | (filter << 2) | spi3w_en; }
 	  };
 	  config configReg;
 
+	  //Structure containing the ctrl_meas registers bits.
 	  struct ctrl_meas {
-	     unsigned int osrs_t : 3; ///< temperature oversampling
-	     unsigned int osrs_p : 3; ///< pressure oversampling
-	     unsigned int mode : 2; ///< device mode
+	     unsigned int osrs_t : 3;
+	     unsigned int osrs_p : 3;
+	     unsigned int mode : 2;
 
-	     /// @return combined ctrl register
+
 	     unsigned int get() { return (osrs_t << 5) | (osrs_p << 2) | mode; }
 	   };
 	   ctrl_meas measReg;
 
+	   //Structure containing the ctrl_hum registers bits.
 	   struct ctrl_hum {
 	       /// unused - don't set
 	       unsigned int none : 5;
-	       unsigned int osrs_h : 3; ///< pressure oversampling
+	       unsigned int osrs_h : 3; // pressure oversampling
 
-	       /// @return combined ctrl hum register
+
 	       unsigned int get() { return (osrs_h); }
 	     };
-	     ctrl_hum humReg; //!< hum register object
+	     ctrl_hum humReg;
 public:
 
 	uint8_t SLAVE_READ_ADDRESS; //Adress of the BME280 in READ mode
 	uint8_t SLAVE_WRITE_ADDRESS; //Adress of the BME280 in WRITE mode
 
 
+	//Different possibities for sensor setting
 	enum sensor_sampling {
 	    SAMPLING_NONE = 0b000,
 	    SAMPLING_X1 = 0b001,
@@ -214,13 +228,12 @@ public:
 	    STANDBY_MS_1000 = 0b101
 	  };
 
-	BME280(uint8_t SLAVE_READ_ADDRESS = 0xED, uint8_t SLAVE_WRITE_ADDRESS = 0xEC);
+	BME280(uint8_t SLAVE_READ_ADDRESS = 0xED, uint8_t SLAVE_WRITE_ADDRESS = 0xEC); //Constructor with a default read/wirte adress.
 	bool init(uint8_t profile);
-	void get_coefficients(void);
-	void set_profile(uint8_t profile);
 	float get_temperature(void);
-	float get_pressure();
+	float get_pressure(void);
 	float get_altitude(void);
+	float get_humidity(void);
 
 
 };
@@ -240,9 +253,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	uint8_t buf[12];
-	float temp_c;
-	float press;
-	float alt;
+	float data;
   /* USER CODE END 1 */
   
 
@@ -280,12 +291,12 @@ int main(void)
   while (1)
   {
 	  bme280.init(1);
-	  alt = bme280.get_altitude();
-	  alt *= 100;
+	  data = bme280.get_humidity();
+	  data *= 100;
 	          sprintf((char*)buf,
-	                "%u.%u m\r\n",
-	                ((unsigned int)alt / 100),
-	                ((unsigned int)alt % 100));
+	                "%u.%u pro\r\n",
+	                ((unsigned int)data / 100),
+	                ((unsigned int)data % 100));
 	 HAL_UART_Transmit(&huart3, buf, strlen((char*)buf), HAL_MAX_DELAY);
 	 HAL_Delay(500);
     /* USER CODE END WHILE */
@@ -575,8 +586,8 @@ BME280::BME280(uint8_t SLAVE_READ_ADDRESS, uint8_t SLAVE_WRITE_ADDRESS){
 
 uint8_t  BME280::read8(uint8_t add){
 	uint8_t buffer[] = {add};
-	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
-	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the address of the register which should be read.
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the address of the register which should be read.
 	HAL_I2C_Master_Receive(&hi2c1,SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY); // Receiving the data of the register and storing it into the buffer.
 	return buffer[0];
 }
@@ -584,8 +595,8 @@ uint8_t  BME280::read8(uint8_t add){
 uint16_t  BME280::read16(uint8_t add){
 	uint8_t buffer[] = {add};
 	uint16_t data;
-	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
-	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the address of the register which should be read.
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the address of the register which should be read.
 	HAL_I2C_Master_Receive(&hi2c1,SLAVE_READ_ADDRESS, buffer, 2, HAL_MAX_DELAY); // Receiving the data of the register and storing it into the buffer.
 	data = buffer[0] << 8 | buffer[1];
 	return data;
@@ -594,8 +605,8 @@ uint16_t  BME280::read16(uint8_t add){
 uint16_t  BME280::read16_LE(uint8_t add){
 	uint8_t buffer[] = {add};
 	uint16_t data;
-	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
-	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the address of the register which should be read.
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the address of the register which should be read.
 	HAL_I2C_Master_Receive(&hi2c1,SLAVE_READ_ADDRESS, buffer, 2, HAL_MAX_DELAY); // Receiving the data of the register and storing it into the buffer.
 	data = buffer[1] << 8 | buffer[0];
 	return data;
@@ -612,8 +623,8 @@ int16_t  BME280::readS16_LE(uint8_t add){
 uint32_t  BME280::read24(uint8_t add){
 	uint8_t buffer[] = {add};
 	uint32_t data;
-	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
-	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the adress of the register which should be read.
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the address of the register which should be read.
+	HAL_I2C_Master_Transmit(&hi2c1, SLAVE_READ_ADDRESS, buffer, 1, HAL_MAX_DELAY ); // Sending in WRITE mode the address of the register which should be read.
 	HAL_I2C_Master_Receive(&hi2c1,SLAVE_READ_ADDRESS, buffer, 3, HAL_MAX_DELAY); // Receiving the data of the register and storing it into the buffer.
 	data = buffer[0] << 16 | buffer[1] << 8 | buffer[2];
 	return data;
@@ -627,7 +638,7 @@ bool BME280::write(uint8_t add, uint8_t data){
 
 	uint8_t buffer[]={add, data};
 
-	ret =  HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 2, HAL_MAX_DELAY );
+	ret =  HAL_I2C_Master_Transmit(&hi2c1, SLAVE_WRITE_ADDRESS, buffer, 2, HAL_MAX_DELAY ); //Sending in WIRTE mode the address of the register and the data that should be written into the register.
 	if ( ret != HAL_OK ) {
 		status = false;
 	}
@@ -638,11 +649,13 @@ bool BME280::write(uint8_t add, uint8_t data){
 bool BME280::init(uint8_t profile){
 	bool status = true;
 
+	//Checking if the Chip ID is correct.
 	uint8_t chip_id = read8(REGISTER_CHIPID);
 	if (chip_id != 0x60){
 		status = false;
 	}
 
+	//Doing a reset.
 	write(REGISTER_SOFTRESET,0xB6);
 	HAL_Delay(400);
 
@@ -752,7 +765,7 @@ float BME280::get_temperature(void){
 	 return temp / 100;
 }
 
-float BME280::get_pressure(){
+float BME280::get_pressure(void){
 	int64_t var1, var2, press;
 	get_temperature();
 	int32_t digital_press = read24(REGISTER_PRESSUREDATA);
@@ -786,9 +799,40 @@ float BME280::get_pressure(){
 float BME280::get_altitude(void){
 	float sea_level =  101325; //Pa
 	float current_press = get_pressure(); //Pressure in Pa
-	float current_temp = get_temperature() + 273.15; // Temperature in Kelvin
-	float altitude = (current_temp/0.0065)*(1-pow((current_press/sea_level),(1/5.255)));
+	float altitude = 44330*(1-pow(current_press/sea_level,(1/5.255)));
 	return altitude;
+}
+
+float BME280::get_humidity(void){
+	get_temperature();
+	int32_t digital_hum = read16(REGISTER_HUMIDDATA);
+	if (digital_hum == 0x8000)
+	    return NAN;
+
+	int32_t v_x1_u32r;
+	v_x1_u32r = (temp_fine - ((int32_t)76800));
+	v_x1_u32r = (((((digital_hum << 14) - (((int32_t)calib.dig_H4) << 20) -
+	                  (((int32_t)calib.dig_H5) * v_x1_u32r)) +
+	                 ((int32_t)16384)) >>
+	                15) *
+	               (((((((v_x1_u32r * ((int32_t)calib.dig_H6)) >> 10) *
+	                    (((v_x1_u32r * ((int32_t)calib.dig_H3)) >> 11) +
+	                     ((int32_t)32768))) >>
+	                   10) +
+	                  ((int32_t)2097152)) *
+	                     ((int32_t)calib.dig_H2) +
+	                 8192) >>
+	                14));
+
+	v_x1_u32r = (v_x1_u32r - (((((v_x1_u32r >> 15) * (v_x1_u32r >> 15)) >> 7) *
+	                             ((int32_t)calib.dig_H1)) >>
+	                            4));
+
+	v_x1_u32r = (v_x1_u32r < 0) ? 0 : v_x1_u32r;
+	v_x1_u32r = (v_x1_u32r > 419430400) ? 419430400 : v_x1_u32r;
+	float humidity = (v_x1_u32r >> 12);
+	 return humidity / 1024.0;
+
 }
 
 
